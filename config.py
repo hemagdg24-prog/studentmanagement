@@ -1,24 +1,47 @@
 import os
+from urllib.parse import quote_plus
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
+def normalize_db_url(url: str) -> str:
+    """Normalize database connection string and encode special chars in password."""
+    if not url:
+        return "sqlite:///student_management.db"
+    
+    # Handle Heroku / Supabase legacy scheme
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+
+    # Automatically URL-encode password if it contains '@'
+    if "://" in url and "@" in url:
+        scheme, rest = url.split("://", 1)
+        last_at_idx = rest.rfind("@")
+        auth_part = rest[:last_at_idx]
+        host_part = rest[last_at_idx + 1:]
+        if ":" in auth_part:
+            user, password = auth_part.split(":", 1)
+            # Encode any raw '@' in the password
+            if "@" in password:
+                password = password.replace("@", "%40")
+            url = f"{scheme}://{user}:{password}@{host_part}"
+
+    # Ensure psycopg2 driver is explicitly used
+    if url.startswith("postgresql://") and "+psycopg2" not in url:
+        url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+    return url
+
+
 class Config:
     """Base configuration."""
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
-    # Force psycopg2 dialect so SQLAlchemy 2.x doesn't try to import psycopg3
     _raw_url = os.environ.get(
         "DATABASE_URL",
         "postgresql://postgres:password@localhost:5432/student_management"
     )
-    # Normalise Supabase / Railway URLs that use "postgres://" scheme
-    if _raw_url.startswith("postgres://"):
-        _raw_url = _raw_url.replace("postgres://", "postgresql://", 1)
-    # Ensure the psycopg2 driver is specified
-    if _raw_url.startswith("postgresql://") and "+psycopg2" not in _raw_url:
-        _raw_url = _raw_url.replace("postgresql://", "postgresql+psycopg2://", 1)
-    SQLALCHEMY_DATABASE_URI = _raw_url
+    SQLALCHEMY_DATABASE_URI = normalize_db_url(_raw_url)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
