@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Add Student — EduRankAI{% endblock %}
+{% block breadcrumb %}Add Student{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Add Student</h1>
+    <p class="page-subtitle">Register a new student in the system.</p>
+  </div>
+  <a href="{{ url_for('students') }}" class="btn btn-outline-custom">
+    <i class="bi bi-arrow-left me-2"></i>Back to Students
+  </a>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-xl-8 col-lg-10">
+    <div class="card-custom">
+      <div class="card-custom__header">
+        <h5 class="card-custom__title">
+          <i class="bi bi-person-plus-fill me-2"></i>Student Registration Form
+        </h5>
+        <p class="card-custom__subtitle">All fields marked with * are required.</p>
+      </div>
+
+      <form method="POST" action="{{ url_for('add_student') }}" novalidate id="addStudentForm">
+        <div class="form-body">
+          <div class="row g-4">
+
+            <!-- Full Name -->
+            <div class="col-md-6">
+              <div class="form-group-custom">
+                <label class="form-label-custom" for="full_name">
+                  Full Name <span class="required-star">*</span>
+                </label>
+                <div class="input-group-custom">
+                  <i class="bi bi-person-fill input-icon"></i>
+                  <input type="text" id="full_name" name="full_name" class="form-control form-control-custom ps-5"
+                    placeholder="e.g. Jane Doe" value="{{ form_data.get('full_name', '') }}" required maxlength="150" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Email -->
+            <div class="col-md-6">
+              <div class="form-group-custom">
+                <label class="form-label-custom" for="email">
+                  Email Address <span class="required-star">*</span>
+                </label>
+                <div class="input-group-custom">
+                  <i class="bi bi-envelope-fill input-icon"></i>
+                  <input type="email" id="email" name="email" class="form-control form-control-custom ps-5"
+                    placeholder="e.g. jane@example.com" value="{{ form_data.get('email', '') }}" required />
+                </div>
+              </div>
+            </div>
+
+            <!-- Phone Number -->
+            <div class="col-md-6">
+              <div class="form-group-custom">
+                <label class="form-label-custom" for="phone_number">
+                  Phone Number <span class="required-star">*</span>
+                </label>
+                <div class="input-group-custom">
+                  <i class="bi bi-telephone-fill input-icon"></i>
+                  <input type="tel" id="phone_number" name="phone_number" class="form-control form-control-custom ps-5"
+                    placeholder="e.g. +1 234 567 8901" value="{{ form_data.get('phone_number', '') }}" required />
+                </div>
+              </div>
+            </div>
+
+            <!-- Course -->
+            <div class="col-md-6">
+              <div class="form-group-custom">
+                <label class="form-label-custom" for="course">
+                  Course <span class="required-star">*</span>
+                </label>
+                <div class="input-group-custom">
+                  <i class="bi bi-book-fill input-icon"></i>
+                  <select id="course" name="course" class="form-select form-control-custom ps-5" required>
+                    <option value="" disabled {% if not form_data.get('course') %}selected{% endif %}>
+                      Select a course…
+                    </option>
+                    {% for c in courses %}
+                    <option value="{{ c }}" {% if form_data.get('course')==c %}selected{% endif %}>
+                      {{ c }}
+                    </option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Enrollment Date -->
+            <div class="col-md-6">
+              <div class="form-group-custom">
+                <label class="form-label-custom" for="enrollment_date">
+                  Enrollment Date <span class="required-star">*</span>
+                </label>
+                <div class="input-group-custom">
+                  <i class="bi bi-calendar-event-fill input-icon"></i>
+                  <input type="date" id="enrollment_date" name="enrollment_date"
+                    class="form-control form-control-custom ps-5" value="{{ form_data.get('enrollment_date', today) }}"
+                    required />
+                </div>
+              </div>
+            </div>
+
+            <!-- Status -->
+            <div class="col-md-6">
+              <div class="form-group-custom">
+                <label class="form-label-custom" for="status">
+                  Status <span class="required-star">*</span>
+                </label>
+                <div class="input-group-custom">
+                  <i class="bi bi-toggle-on input-icon"></i>
+                  <select id="status" name="status" class="form-select form-control-custom ps-5" required>
+                    <option value="Active" {% if form_data.get('status', 'Active' )=='Active' %}selected{% endif %}>
+                      ● Active
+                    </option>
+                    <option value="Inactive" {% if form_data.get('status')=='Inactive' %}selected{% endif %}>
+                      ○ Inactive
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /.row -->
+        </div><!-- /.form-body -->
+
+        <!-- Form Actions -->
+        <div class="form-footer">
+          <a href="{{ url_for('students') }}" class="btn btn-outline-custom px-4">
+            <i class="bi bi-x-lg me-1"></i>Cancel
+          </a>
+          <button type="submit" class="btn btn-primary-custom px-5" id="submitBtn">
+            <i class="bi bi-person-plus-fill me-2"></i>Register Student
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Client-side loading state on submit
+  document.getElementById('addStudentForm').addEventListener('submit', function () {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Registering…';
+  });
+</script>
+{% endblock %}

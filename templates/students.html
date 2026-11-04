@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block title %}Students — EduRankAI{% endblock %}
+{% block breadcrumb %}Students{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Students</h1>
+    <p class="page-subtitle">Manage and monitor all enrolled students.</p>
+  </div>
+  <a href="{{ url_for('add_student') }}" class="btn btn-primary-custom">
+    <i class="bi bi-person-plus-fill me-2"></i>Add Student
+  </a>
+</div>
+
+<!-- ── FILTER BAR ──────────────────────────────────────────────── -->
+<div class="card-custom mb-4">
+  <form method="GET" action="{{ url_for('students') }}" id="filterForm">
+    <div class="row g-3 align-items-end">
+      <!-- Search -->
+      <div class="col-lg-5 col-md-12">
+        <label class="form-label-custom" for="searchInput">Search</label>
+        <div class="input-group-custom">
+          <i class="bi bi-search input-icon"></i>
+          <input type="text" id="searchInput" name="q" class="form-control form-control-custom ps-5"
+            placeholder="Search by name or email…" value="{{ query }}" autocomplete="off" />
+          {% if query %}
+          <button type="button" class="input-clear" onclick="clearSearch()">
+            <i class="bi bi-x-lg"></i>
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Course Filter -->
+      <div class="col-lg-3 col-md-6">
+        <label class="form-label-custom" for="courseSelect">Course</label>
+        <select id="courseSelect" name="course" class="form-select form-control-custom">
+          <option value="">All Courses</option>
+          {% for c in courses %}
+          <option value="{{ c }}" {% if course_filter==c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Status Filter -->
+      <div class="col-lg-2 col-md-6">
+        <label class="form-label-custom" for="statusSelect">Status</label>
+        <select id="statusSelect" name="status" class="form-select form-control-custom">
+          <option value="">All Status</option>
+          <option value="Active" {% if status_filter=='Active' %}selected{% endif %}>Active</option>
+          <option value="Inactive" {% if status_filter=='Inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+      </div>
+
+      <!-- Buttons -->
+      <div class="col-lg-2 col-md-12 d-flex gap-2">
+        <button type="submit" class="btn btn-primary-custom flex-fill">
+          <i class="bi bi-funnel-fill me-1"></i>Filter
+        </button>
+        <a href="{{ url_for('students') }}" class="btn btn-outline-custom" title="Clear filters">
+          <i class="bi bi-arrow-counterclockwise"></i>
+        </a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- ── STUDENT TABLE ───────────────────────────────────────────── -->
+<div class="card-custom">
+  <div class="card-custom__header">
+    <div>
+      <h5 class="card-custom__title">
+        <i class="bi bi-table me-2"></i>Student Records
+      </h5>
+      <p class="card-custom__subtitle">
+        {% if pagination.total > 0 %}
+        Showing {{ ((pagination.page - 1) * 10) + 1 }}–{{ [pagination.page * 10, pagination.total] | min }}
+        of {{ pagination.total }} student{{ 's' if pagination.total != 1 else '' }}
+        {% if query %} matching "<strong>{{ query }}</strong>"{% endif %}
+        {% else %}
+        No students found
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    {% if students %}
+    <table class="table table-custom">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Student</th>
+          <th>Phone</th>
+          <th>Course</th>
+          <th>Enrolled</th>
+          <th>Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for student in students %}
+        <tr>
+          <td class="text-muted fw-500">#{{ student.id }}</td>
+          <td>
+            <div class="student-cell">
+              <div class="student-avatar">{{ student.full_name[0].upper() }}</div>
+              <div class="student-info">
+                <span class="student-name">{{ student.full_name }}</span>
+                <span class="student-email">{{ student.email }}</span>
+              </div>
+            </div>
+          </td>
+          <td class="text-muted">{{ student.phone_number }}</td>
+          <td>
+            <span class="course-badge">{{ student.course }}</span>
+          </td>
+          <td class="text-muted">
+            {{ student.enrollment_date.strftime('%d %b %Y') if student.enrollment_date else '—' }}
+          </td>
+          <td>
+            <span class="status-badge status-badge--{{ student.status.lower() }}">
+              <span class="status-dot"></span>{{ student.status }}
+            </span>
+          </td>
+          <td class="text-end">
+            <div class="action-btns justify-content-end">
+              <a href="{{ url_for('edit_student', student_id=student.id) }}" class="btn-action btn-action--edit"
+                title="Edit student">
+                <i class="bi bi-pencil-fill"></i>
+              </a>
+              <!-- Delete trigger -->
+              <button type="button" class="btn-action btn-action--delete" title="Delete student" data-bs-toggle="modal"
+                data-bs-target="#deleteModal" data-student-id="{{ student.id }}"
+                data-student-name="{{ student.full_name }}">
+                <i class="bi bi-trash3-fill"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <i class="bi bi-search empty-state__icon"></i>
+      <p class="empty-state__text">
+        {% if query or course_filter or status_filter %}
+        No students match your current filters.
+        {% else %}
+        No students registered yet.
+        {% endif %}
+      </p>
+      {% if query or course_filter or status_filter %}
+      <a href="{{ url_for('students') }}" class="btn btn-outline-custom btn-sm mt-2">
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Clear Filters
+      </a>
+      {% else %}
+      <a href="{{ url_for('add_student') }}" class="btn btn-primary-custom btn-sm mt-2">
+        <i class="bi bi-person-plus-fill me-1"></i>Add First Student
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Pagination -->
+  {% if pagination.pages > 1 %}
+  <div class="card-custom__footer">
+    <nav aria-label="Student pagination">
+      <ul class="pagination pagination-custom mb-0">
+        <!-- Previous -->
+        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+          <a class="page-link"
+            href="{{ url_for('students', page=pagination.prev_num, q=query, course=course_filter, status=status_filter) if pagination.has_prev else '#' }}"
+            aria-label="Previous">
+            <i class="bi bi-chevron-left"></i>
+          </a>
+        </li>
+
+        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if page_num %}
+        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+          <a class="page-link"
+            href="{{ url_for('students', page=page_num, q=query, course=course_filter, status=status_filter) }}">
+            {{ page_num }}
+          </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+        {% endfor %}
+
+        <!-- Next -->
+        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+          <a class="page-link"
+            href="{{ url_for('students', page=pagination.next_num, q=query, course=course_filter, status=status_filter) if pagination.has_next else '#' }}"
+            aria-label="Next">
+            <i class="bi bi-chevron-right"></i>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ── DELETE CONFIRMATION MODAL ──────────────────────────────── -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-custom">
+      <div class="modal-header border-0 pb-0">
+        <div class="modal-icon modal-icon--danger">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+      </div>
+      <div class="modal-body text-center">
+        <h5 class="modal-title fw-700 mb-2" id="deleteModalLabel">Delete Student?</h5>
+        <p class="text-muted mb-0">
+          You are about to permanently delete
+          <strong id="deleteStudentName"></strong>.
+          This action cannot be undone.
+        </p>
+      </div>
+      <div class="modal-footer border-0 justify-content-center gap-3 pt-0">
+        <button type="button" class="btn btn-outline-custom px-4" data-bs-dismiss="modal">
+          <i class="bi bi-x-lg me-1"></i>Cancel
+        </button>
+        <form id="deleteForm" method="POST" action="">
+          <button type="submit" class="btn btn-danger-custom px-4">
+            <i class="bi bi-trash3-fill me-1"></i>Delete
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Populate delete modal with the correct student info
+  document.getElementById('deleteModal').addEventListener('show.bs.modal', function (event) {
+    const btn = event.relatedTarget;
+    const studentId = btn.getAttribute('data-student-id');
+    const studentName = btn.getAttribute('data-student-name');
+    document.getElementById('deleteStudentName').textContent = studentName;
+    document.getElementById('deleteForm').action = `/students/${studentId}/delete`;
+  });
+
+  function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('filterForm').submit();
+  }
+</script>
+{% endblock %}
