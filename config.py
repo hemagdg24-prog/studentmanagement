@@ -37,16 +37,13 @@ def normalize_db_url(url: str) -> str:
 class Config:
     """Base configuration."""
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
-    _raw_url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql://postgres:password@localhost:5432/student_management"
-    )
+    _raw_url = os.environ.get("DATABASE_URL") or "sqlite:////tmp/student_management.db"
     SQLALCHEMY_DATABASE_URI = normalize_db_url(_raw_url)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
         "pool_recycle": 300,
-    }
+    } if not _raw_url.startswith("sqlite") else {}
 
 
 class DevelopmentConfig(Config):

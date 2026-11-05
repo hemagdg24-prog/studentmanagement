@@ -26,6 +26,13 @@ def create_app(config_name: str = "default") -> Flask:
     db.init_app(app)
     migrate.init_app(app, db)
 
+    # Ensure tables exist (safe with checkfirst=True)
+    with app.app_context():
+        try:
+            db.create_all()
+        except Exception:
+            pass
+
     # Register blueprints / routes
     register_routes(app)
 
