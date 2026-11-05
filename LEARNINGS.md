@@ -84,4 +84,3 @@ This document records the architectural decisions, technical trade-offs, issues 
    - Deleting or updating statuses across multiple students at once would streamline large batch enrollments.
 3. **Exporting Records:**
    - Adding CSV/Excel export for filtered student datasets.
-
