@@ -420,9 +420,12 @@ def register_routes(app: Flask) -> None:
 
     @app.errorhandler(404)
     def not_found(e):
-        if request.path.startswith("/api/"):
-            return jsonify({"error": "Resource not found."}), 404
-        return render_template("404.html"), 404
+        return jsonify({
+            "error": "Resource not found.",
+            "request_path": request.path,
+            "path_info": request.environ.get("PATH_INFO"),
+            "headers": dict(request.headers)
+        }), 404
 
     @app.errorhandler(500)
     def internal_error(e):
