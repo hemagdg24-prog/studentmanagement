@@ -1,5 +1,6 @@
 import os
 import sys
+import urllib.parse
 
 # Ensure root directory is in Python path so app, config, models can be imported
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -12,44 +13,41 @@ from app import app as flask_app
 class VercelPathFixMiddleware:
     """
     WSGI middleware to fix PATH_INFO on Vercel Serverless Functions.
-    Vercel rewrites requests to /api/index.py, which overwrites PATH_INFO.
-    This middleware restores the original requested path from Vercel headers.
+    Vercel rewrites requests to /api/index.py?__path=$1.
+    This middleware extracts the original URL path and restores it into PATH_INFO.
     """
 
     def __init__(self, wsgi_app):
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
-        # Diagnostic route to verify headers if needed
-        if environ.get("HTTP_X_MATCHED_PATH") == "/_debug" or environ.get("PATH_INFO") == "/_debug":
+        qs = environ.get("QUERY_STRING", "")
+        if "__path=" in qs:
+            parsed = urllib.parse.parse_qs(qs, keep_blank_values=True)
+            path_list = parsed.pop("__path", None)
+            if path_list is not None:
+                raw_path = path_list[0] if path_list else ""
+                clean_path = "/" + raw_path.lstrip("/")
+                environ["PATH_INFO"] = clean_path
+                # Re-encode remaining query string without __path
+                environ["QUERY_STRING"] = urllib.parse.urlencode(
+                    [(k, v) for k, vs in parsed.items() for v in vs]
+                )
+        elif environ.get("PATH_INFO", "").startswith("/api/index"):
+            environ["PATH_INFO"] = "/"
+
+        # Diagnostic endpoint if needed
+        if environ.get("PATH_INFO") == "/_debug":
             import json
             status = "200 OK"
             headers = [("Content-Type", "application/json")]
             start_response(status, headers)
             info = {
                 "PATH_INFO": environ.get("PATH_INFO"),
-                "HTTP_X_MATCHED_PATH": environ.get("HTTP_X_MATCHED_PATH"),
-                "HTTP_X_FORWARDED_URI": environ.get("HTTP_X_FORWARDED_URI"),
-                "REQUEST_URI": environ.get("REQUEST_URI"),
-                "RAW_URI": environ.get("RAW_URI"),
+                "QUERY_STRING": environ.get("QUERY_STRING"),
+                "DATABASE_URL_SET": bool(os.environ.get("DATABASE_URL")),
             }
             return [json.dumps(info, indent=2).encode("utf-8")]
-
-        # Restore the actual URL path requested by the browser
-        real_path = (
-            environ.get("HTTP_X_MATCHED_PATH")
-            or environ.get("HTTP_X_FORWARDED_URI")
-            or environ.get("REQUEST_URI")
-            or environ.get("RAW_URI")
-        )
-
-        if real_path and not real_path.startswith("/api/index"):
-            # Strip any query parameters from path (e.g., /students?q=test -> /students)
-            clean_path = real_path.split("?")[0]
-            environ["PATH_INFO"] = clean_path
-        elif environ.get("PATH_INFO", "").startswith("/api/index"):
-            # If PATH_INFO is literally /api/index.py without header, default to /
-            environ["PATH_INFO"] = "/"
 
         return self.wsgi_app(environ, start_response)
 
